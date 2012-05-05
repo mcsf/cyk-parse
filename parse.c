@@ -4,6 +4,10 @@
 #include <string.h>
 
 
+/* Type for production matrices */
+typedef bool ***P_t;
+
+
 /* Constants */
 const char SIZ_SIMP = 2;  /* Size for a simple production rule               */
 const char SIZ_COMP = 3;  /* Size for a compound production rule             */
@@ -22,9 +26,6 @@ char **P_comp;
 
 /* Initial nonterminal */
 char init;
-
-/* Productions matrix */
-bool ***P;
 
 
 /*
@@ -50,9 +51,84 @@ void print_matrix(bool ***P, int n) {
 }
 
 
-int main() {
+/*
+ * Create and return a new production matrix ready to be used for the parsing
+ * of a string of length `n'.
+ */
+P_t P_new(int n) {
 
-/* ****************************************************************** */
+	/* Allocation */
+	bool ***P = malloc(sizeof(void *) * (n + 1));
+	for (int i = 0; i < n + 1; i++) {
+		P[i] = malloc(sizeof(void *) * (n + 1));
+		for (int j = 0; j < n + 1; j++) {
+			P[i][j] = malloc(sizeof(bool) * SIZ_ALPH);
+		}
+	}
+
+	/* Initialization */
+	for (int i=0; i<=n; i++)
+		for (int j=0; j<=n; j++)
+			for (int k=0; k<SIZ_ALPH; k++)
+				P[i][j][k] = false;
+
+	return P;
+}
+
+
+void P_free(P_t P, int n) {
+	for (int i = 0; i < n + 1; i++) {
+		for (int j = 0; j < n + 1; j++) {
+			free(P[i][j]);
+		}
+		free(P[i]);
+	}
+	free(P);
+}
+
+
+void parse(char *input) {
+
+	/* Number of terminals in string */
+	int n = strlen(input);
+
+	/* Productions matrix */
+	bool ***P = P_new(n);
+
+	/* Handle simple productions */
+	for (int i=1; i<=n; i++)
+		for (int j=1; j<=r_simp; j++)
+			/* R_j -> a_i */
+			if (P_simp[j][1] == input[i-1]) {
+				int rule = ctoi(P_simp[j][0]);
+				P[i][1][rule] = true;
+			}
+
+	/* Handle compound productions */
+	for (int i=2; i<=n; i++)
+		for (int j=1; j<=n-i+1; j++)
+			for (int k=1; k<=i-1; k++)
+				for (int l=1; l<=r_comp; l++) {
+					/* R_A -> R_B R_C */
+					int A = ctoi(P_comp[l][0]);
+					int B = ctoi(P_comp[l][1]);
+					int C = ctoi(P_comp[l][2]);
+					if (P[j][k][B] && P[j+k][i-k][C])
+						P[j][i][A] = true;
+				}
+
+	//print_matrix(P, n);
+
+	if (P[1][n][ctoi(init)])
+		puts("YES");
+	else
+		puts("NO");
+
+	P_free(P, n);
+}
+
+
+int main() {
 
 	/* BUILD PARSER */
 
@@ -112,78 +188,24 @@ int main() {
 		char *line    = (char *) malloc(buf_siz);
 
 		while (getline(&line, &buf_siz, stdin) != EOF) {
-			if (strcmp(line, "#") == 0) break;
+			if (strcmp(line, "#\n") == 0) break;
 
-			printf(line);
+			int  size = strlen(line) - 1;
+			char input[size];
+			strncpy(input, line, size);
+			input[size] = '\0';
+
+			parse(input);
 
 		}
 		free(line);
 	}
 
-	//return 0;
-
-	/* Input string */
-	const char input[] = "00111";
-
-	/* Number of terminals in string */
-	int n = strlen(input);
-
-	/* Allocation */
-	P = malloc(sizeof(void *) * (n + 1));
-	for (int i = 0; i < n + 1; i++) {
-		P[i] = malloc(sizeof(void *) * (n + 1));
-		for (int j = 0; j < n + 1; j++) {
-			P[i][j] = malloc(sizeof(bool) * SIZ_ALPH);
-		}
-	}
-
-	/* Initialization */
-	for (int i=0; i<=n; i++)
-		for (int j=0; j<=n; j++)
-			for (int k=0; k<SIZ_ALPH; k++)
-				P[i][j][k] = false;
-
-/* ****************************************************************** */
-
-	/* PARSE STRING */
-
-	/* Handle simple productions */
-	for (int i=1; i<=n; i++) {
-		for (int j=1; j<=r_simp; j++) {
-			/* R_j -> a_i */
-			if (P_simp[j][1] == input[i-1]) {
-				int rule = ctoi(P_simp[j][0]);
-				P[i][1][rule] = true;
-			}
-		}
-	}
-
-	/* Handle compound productions */
-	for (int i=2; i<=n; i++)
-		for (int j=1; j<=n-i+1; j++)
-			for (int k=1; k<=i-1; k++)
-				for (int l=1; l<=r_comp; l++) {
-					/* R_A -> R_B R_C */
-					int A = ctoi(P_comp[l][0]);
-					int B = ctoi(P_comp[l][1]);
-					int C = ctoi(P_comp[l][2]);
-					if (P[j][k][B] && P[j+k][i-k][C])
-						P[j][i][A] = true;
-				}
-
-
-/* ****************************************************************** */
-
-	/* FINISH */
-
-	//print_matrix(P, n);
-
-	if (P[1][n][ctoi(init)])
-		puts("YES");
-	else
-		puts("NO");
-
 	return 0;
+
+
+/* ****************************************************************** */
+
 }
 
 /* vim: set ft=c: */
