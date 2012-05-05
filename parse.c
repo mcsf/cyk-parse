@@ -4,15 +4,41 @@
 #include <string.h>
 
 
-/* Type for production matrices */
+/*
+ * This prototype should be in stdio.h, but GCC warns of an implicit
+ * declaration without it. This might be a particular problem of the
+ * system header files of the developer (Debian Wheezy).
+ */
+int getline(char **lineptr, int *n, FILE *stream);
+
+
+/* Size of line buffer for the parsing of rules */
+#define SIZ_BUF 4
+
+
+/* TYPES *********************************************************** */
+
+/* Type for productions matrices */
 typedef bool ***P_t;
 
 
+/* Type and struct definitions for a stack of fixed-size strings */
+typedef struct _node {
+	char value[SIZ_BUF];
+	struct _node *next;
+} node;
+
+typedef struct {
+	node *head;
+} stack;
+
+
+/* GLOBALS ********************************************************** */
+
 /* Constants */
-const char SIZ_SIMP = 2;  /* Size for a simple production rule               */
-const char SIZ_COMP = 3;  /* Size for a compound production rule             */
-const char SIZ_ALPH = 26; /* Size of the alphabet = number of possible rules */
-const char SIZ_BUF  = 4;  /* Size of line buffer for the parsing of rules    */
+const char SIZ_SIMP = 2;  /* Size for a simple production rule   */
+const char SIZ_COMP = 3;  /* Size for a compound production rule */
+const char SIZ_ALPH = 26; /* Alphabet size = max number of rules */
 
 /* Number of production rules */
 int r_simp; /* Simple rules:   A -> a  */
@@ -28,33 +54,40 @@ char **P_comp;
 char init;
 
 
-/*
- * This prototype should be in stdio.h, but GCC warns of an implicit
- * declaration without it. This might be a particular problem of the system
- * header files of the developer (Debian Wheezy).
- * */
-int getline(char **lineptr, int *n, FILE *stream);
+/* STACK METHODS **************************************************** */
 
+stack *stk_new() {
+	stack *stk = (stack *) malloc(sizeof(stack));
+	stk->head = NULL;
+	return stk;
+}
 
-/* Convert chars A..Z to ints 0..26 */
-int ctoi(char c) {
-	return c - 65;
+void stk_push(stack *stk, char *value) {
+	node *new  = malloc(sizeof(node));
+	strncpy(new->value, value, SIZ_BUF);
+	new->next  = stk->head;
+	stk->head  = new;
+}
+
+void stk_pop(stack *stk, char *value) {
+	node *n   = stk->head;
+
+	value[0] = '\0';
+	if (!n) return;
+
+	strncpy(value, n->value, SIZ_BUF);
+	stk->head = n->next;
+	free(n);
 }
 
 
-void print_matrix(bool ***P, int n) {
-	for (int i=1; i<=n; i++)
-		for (int j=1; j<=n; j++)
-			for (int k=0; k<SIZ_ALPH; k++)
-				printf("%d\t%d\t%c\t%s\n",
-						i, j, k+65, P[i][j][k] ? "YES" : "");
-}
-
+/* PRODUCTIONS MATRIX METHODS *************************************** */
 
 /*
- * Create and return a new production matrix ready to be used for the parsing
- * of a string of length `n'.
+ * Create and return a new productions matrix ready to be used for the
+ * parsing of a string of length `n'.
  */
+
 P_t P_new(int n) {
 
 	/* Allocation */
@@ -86,6 +119,26 @@ void P_free(P_t P, int n) {
 	free(P);
 }
 
+
+/* MISC ************************************************************* */
+
+/* Convert chars A..Z to ints 0..26 */
+int ctoi(char c) {
+	return c - 65;
+}
+
+
+void print_matrix(bool ***P, int n) {
+	for (int i=1; i<=n; i++)
+		for (int j=1; j<=n; j++)
+			for (int k=0; k<SIZ_ALPH; k++)
+				printf("%d\t%d\t%c\t%s\n",
+						i, j, k+65, P[i][j][k] ? "YES" : "");
+}
+
+
+
+/* SINGLE-STRING PARSING ******************************************** */
 
 void parse(char *input) {
 
