@@ -138,7 +138,88 @@ void print_matrix(bool ***P, int n) {
 
 
 
-/* SINGLE-STRING PARSING ******************************************** */
+/* PARSER CONSTRUCTION ********************************************** */
+
+void build() {
+
+	int    lin_siz;
+	int    buf_siz    = SIZ_BUF;
+	char  *line       = (char *) malloc(buf_siz);
+	bool   first_line = true;
+	stack *lines_simp = stk_new();
+	stack *lines_comp = stk_new();
+
+	/* Read every production rule and keep it in a stack */
+
+	while ((lin_siz = getline(&line, &buf_siz, stdin)) != EOF) {
+		bool stop = false;
+
+		if (first_line) {
+			init = line[0];
+#if DEBUG
+			printf("FIRST IS %c\n", init);
+#endif
+			first_line = false;
+		}
+
+		switch (lin_siz) {
+			/* Compound rule */
+			case 4:
+#if DEBUG
+				printf("comp");
+#endif
+				stk_push(lines_comp, line);
+				r_comp++;
+				break;
+
+			/* Simple rule */
+			case 3:
+#if DEBUG
+				printf("simp");
+#endif
+				stk_push(lines_simp, line);
+				r_simp++;
+				break;
+
+			/* Break character */
+			case 2: stop = true; break;
+		}
+
+		if (stop) break;
+#if DEBUG
+		printf("\t%s", line);
+#endif
+	}
+
+	free(line);
+
+	/* Allocate memory for rules arrays */
+
+	P_simp = malloc(sizeof(void *) * (r_simp + 1));
+	for (int i = 0; i < r_simp + 1; i++)
+		P_simp[i] = malloc(sizeof(char) * SIZ_SIMP);
+
+	P_comp = malloc(sizeof(void *) * (r_comp + 1));
+	for (int i = 0; i < r_comp + 1; i++)
+		P_comp[i] = malloc(sizeof(char) * SIZ_COMP);
+
+	/* Populate rules arrays from stacks */
+
+	for (int i = 1; i <= r_simp; i++) {
+		char line[SIZ_BUF];
+		stk_pop(lines_simp, line);
+		strncpy(P_simp[i], line, SIZ_SIMP);
+	}
+
+	for (int i = 1; i <= r_comp; i++) {
+		char line[SIZ_BUF];
+		stk_pop(lines_comp, line);
+		strncpy(P_comp[i], line, SIZ_COMP);
+	}
+}
+
+
+/* PARSING ********************************************************** */
 
 void parse(char *input) {
 
@@ -173,119 +254,44 @@ void parse(char *input) {
 	//print_matrix(P, n);
 
 	if (P[1][n][ctoi(init)])
-		puts("YES");
+		puts("yes");
 	else
-		puts("NO");
+		puts("no");
 
 	P_free(P, n);
 }
 
 
-/* BUILD PARSER ***************************************************** */
+void parse_lines() {
+	int   buf_siz = SIZ_BUF;
+	char *line    = (char *) malloc(buf_siz);
 
-void build() {
+	while (getline(&line, &buf_siz, stdin) != EOF) {
+		if (strcmp(line, "#\n") == 0) break;
 
-	int    lin_siz;
-	int    buf_siz    = SIZ_BUF;
-	char  *line       = (char *) malloc(buf_siz);
-	bool   first_line = true;
-	stack *lines_simp = stk_new();
-	stack *lines_comp = stk_new();
+		int  size = strlen(line) - 1;
+		char input[size];
+		strncpy(input, line, size);
+		input[size] = '\0';
 
-	/* Read every production rule and keep it in a stack */
+#if DEBUG
+		puts(input);
+#endif
+		parse(input);
 
-	while ((lin_siz = getline(&line, &buf_siz, stdin)) != EOF) {
-		bool stop = false;
-
-		if (first_line) {
-			init = line[0];
-			printf("FIRST IS %c\n", init);
-			first_line = false;
-		}
-
-		switch (lin_siz) {
-			/* Compound rule */
-			case 4:
-				printf("comp");
-				stk_push(lines_comp, line);
-				r_comp++;
-				break;
-
-			/* Simple rule */
-			case 3:
-				printf("simp");
-				stk_push(lines_simp, line);
-				r_simp++;
-				break;
-
-			/* Break character */
-			case 2: stop = true; break;
-		}
-
-		if (stop) break;
-		printf("\t%s", line);
 	}
-
 	free(line);
-
-	/* Allocate memory for rules arrays */
-
-	P_simp = malloc(sizeof(void *) * (r_simp + 1));
-	for (int i = 0; i < r_simp + 1; i++)
-		P_simp[i] = malloc(sizeof(char) * SIZ_SIMP);
-
-	P_comp = malloc(sizeof(void *) * (r_comp + 1));
-	for (int i = 0; i < r_comp + 1; i++)
-		P_comp[i] = malloc(sizeof(char) * SIZ_COMP);
-
-	/* Populate rules arrays from stacks */
-
-	for (int i = 1; i <= r_simp; i++) {
-		char line[SIZ_BUF];
-		stk_pop(lines_simp, line);
-		strncpy(P_simp[i], line, SIZ_SIMP);
-	}
-
-	for (int i = 1; i <= r_comp; i++) {
-		char line[SIZ_BUF];
-		stk_pop(lines_comp, line);
-		strncpy(P_comp[i], line, SIZ_COMP);
-	}
 }
-
 	
-/* ****************************************************************** */
+
+/* LET'S DO THIS **************************************************** */
 
 int main() {
 
 	build();
-
-	/* INIT FOR STRING PARSING */
-
-	{
-		int   buf_siz = SIZ_BUF;
-		char *line    = (char *) malloc(buf_siz);
-
-		while (getline(&line, &buf_siz, stdin) != EOF) {
-			if (strcmp(line, "#\n") == 0) break;
-
-			int  size = strlen(line) - 1;
-			char input[size];
-			strncpy(input, line, size);
-			input[size] = '\0';
-
-			puts(input);
-			parse(input);
-
-		}
-		free(line);
-	}
+	parse_lines();
 
 	return 0;
-
-
-/* ****************************************************************** */
-
 }
 
-/* vim: set ft=c: */
+/* vim: set ft=c ts=4 tw=78 fdm=marker fdl=0 fen :*/
