@@ -41,8 +41,8 @@ const char SIZ_COMP = 3;  /* Size for a compound production rule */
 const char SIZ_ALPH = 26; /* Alphabet size = max number of rules */
 
 /* Number of production rules */
-int r_simp; /* Simple rules:   A -> a  */
-int r_comp; /* Compound rules: A -> BC */
+int r_simp = 0; /* Simple rules:   A -> a  */
+int r_comp = 0; /* Compound rules: A -> BC */
 
 /* Simple rules array */
 char **P_simp;
@@ -181,38 +181,54 @@ void parse(char *input) {
 }
 
 
-int main() {
+/* BUILD PARSER ***************************************************** */
 
-	/* BUILD PARSER */
+void build() {
 
-	{
-		int   lin_siz;
-		int   buf_siz = SIZ_BUF;
-		char *line    = (char *) malloc(buf_siz);
+	int    lin_siz;
+	int    buf_siz    = SIZ_BUF;
+	char  *line       = (char *) malloc(buf_siz);
+	bool   first_line = true;
+	stack *lines_simp = stk_new();
+	stack *lines_comp = stk_new();
 
-		while ((lin_siz = getline(&line, &buf_siz, stdin)) != EOF) {
-			bool stop = false;
+	/* Read every production rule and keep it in a stack */
 
-			switch (lin_siz) {
-				/* Compound rule */
-				case 4: printf("comp"); break;
+	while ((lin_siz = getline(&line, &buf_siz, stdin)) != EOF) {
+		bool stop = false;
 
-				/* Simple rule */
-				case 3: printf("simp"); break;
-
-				/* Break character */
-				case 2: stop = true; break;
-			}
-			if (stop) break;
-			printf("\t%s", line);
+		if (first_line) {
+			init = line[0];
+			printf("FIRST IS %c\n", init);
+			first_line = false;
 		}
-		free(line);
+
+		switch (lin_siz) {
+			/* Compound rule */
+			case 4:
+				printf("comp");
+				stk_push(lines_comp, line);
+				r_comp++;
+				break;
+
+			/* Simple rule */
+			case 3:
+				printf("simp");
+				stk_push(lines_simp, line);
+				r_simp++;
+				break;
+
+			/* Break character */
+			case 2: stop = true; break;
+		}
+
+		if (stop) break;
+		printf("\t%s", line);
 	}
 
-	init = 'R';
+	free(line);
 
-	/* TODO */
-	r_simp = 4; r_comp = 3;
+	/* Allocate memory for rules arrays */
 
 	P_simp = malloc(sizeof(void *) * (r_simp + 1));
 	for (int i = 0; i < r_simp + 1; i++)
@@ -222,17 +238,27 @@ int main() {
 	for (int i = 0; i < r_comp + 1; i++)
 		P_comp[i] = malloc(sizeof(char) * SIZ_COMP);
 
-	/* TODO */
-	P_simp[1][0] = 'A'; P_simp[1][1] = '0';
-	P_simp[2][0] = 'B'; P_simp[2][1] = '1';
-	P_simp[3][0] = 'Z'; P_simp[3][1] = '0';
-	P_simp[4][0] = 'O'; P_simp[4][1] = '1';
+	/* Populate rules arrays from stacks */
 
-	P_comp[1][0] = 'R'; P_comp[1][1] = 'A'; P_comp[1][2] = 'B'; 
-	P_comp[2][0] = 'A'; P_comp[2][1] = 'A'; P_comp[2][2] = 'Z'; 
-	P_comp[3][0] = 'B'; P_comp[3][1] = 'B'; P_comp[3][2] = 'O'; 
+	for (int i = 1; i <= r_simp; i++) {
+		char line[SIZ_BUF];
+		stk_pop(lines_simp, line);
+		strncpy(P_simp[i], line, SIZ_SIMP);
+	}
+
+	for (int i = 1; i <= r_comp; i++) {
+		char line[SIZ_BUF];
+		stk_pop(lines_comp, line);
+		strncpy(P_comp[i], line, SIZ_COMP);
+	}
+}
+
 	
 /* ****************************************************************** */
+
+int main() {
+
+	build();
 
 	/* INIT FOR STRING PARSING */
 
@@ -248,6 +274,7 @@ int main() {
 			strncpy(input, line, size);
 			input[size] = '\0';
 
+			puts(input);
 			parse(input);
 
 		}
