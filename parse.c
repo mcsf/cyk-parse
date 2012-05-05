@@ -3,10 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char SIZ_SIMP =  2;
-const char SIZ_COMP =  3;
-const char SIZ_ALPH = 26;
-const char SIZ_BUF  =  4;
+
+/* Constants */
+const char SIZ_SIMP = 2;  /* Size for a simple production rule               */
+const char SIZ_COMP = 3;  /* Size for a compound production rule             */
+const char SIZ_ALPH = 26; /* Size of the alphabet = number of possible rules */
+const char SIZ_BUF  = 4;  /* Size of line buffer for the parsing of rules    */
 
 /* Number of production rules */
 int r_simp; /* Simple rules:   A -> a  */
@@ -18,11 +20,13 @@ char **P_simp;
 /* Compound rules array */
 char **P_comp;
 
-/* Initial rule */
+/* Initial nonterminal */
 char init;
 
 /* Productions matrix */
 bool ***P;
+
+
 /*
  * This prototype should be in stdio.h, but GCC warns of an implicit
  * declaration without it. This might be a particular problem of the system
@@ -30,21 +34,21 @@ bool ***P;
  * */
 int getline(char **lineptr, int *n, FILE *stream);
 
+
 /* Convert chars A..Z to ints 0..26 */
 int ctoi(char c) {
 	return c - 65;
 }
 
+
 void print_matrix(bool ***P, int n) {
-	for (int i=1; i<=n; i++) {
-		for (int j=1; j<=n; j++) {
-			for (int k=0; k<SIZ_ALPH; k++) {
+	for (int i=1; i<=n; i++)
+		for (int j=1; j<=n; j++)
+			for (int k=0; k<SIZ_ALPH; k++)
 				printf("%d\t%d\t%c\t%s\n",
 						i, j, k+65, P[i][j][k] ? "YES" : "");
-			}
-		}
-	}
 }
+
 
 int main() {
 
@@ -64,10 +68,10 @@ int main() {
 				/* Compound rule */
 				case 4: printf("comp"); break;
 
-						/* Simple rule */
+				/* Simple rule */
 				case 3: printf("simp"); break;
 
-						/* Break character */
+				/* Break character */
 				case 2: stop = true; break;
 			}
 			if (stop) break;
