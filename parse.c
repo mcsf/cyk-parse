@@ -8,26 +8,34 @@ const char SIZ_COMP =  3;
 const char SIZ_ALPH = 26;
 const char SIZ_BUF  =  4;
 
-/**
- * RULES:
- *
- * RAB
- * AAZ
- * A0
- * BBO
- * B1
- * Z0
- * O1
- *
- */
+/* Number of production rules */
+int r_simp; /* Simple rules:   A -> a  */
+int r_comp; /* Compound rules: A -> BC */
 
+/* Simple rules array */
+char **P_simp;
 
-/* A..Z -> 0..26 */
+/* Compound rules array */
+char **P_comp;
+
+/* Initial rule */
+char init;
+
+/* Productions matrix */
+bool ***P;
+/*
+ * This prototype should be in stdio.h, but GCC warns of an implicit
+ * declaration without it. This might be a particular problem of the system
+ * header files of the developer (Debian Wheezy).
+ * */
+int getline(char **lineptr, int *n, FILE *stream);
+
+/* Convert chars A..Z to ints 0..26 */
 int ctoi(char c) {
 	return c - 65;
 }
 
-void print_matrix(bool P[6][6][SIZ_ALPH], int n) {
+void print_matrix(bool ***P, int n) {
 	for (int i=1; i<=n; i++) {
 		for (int j=1; j<=n; j++) {
 			for (int k=0; k<SIZ_ALPH; k++) {
@@ -68,21 +76,18 @@ int main() {
 		free(line);
 	}
 
-	/* Number of production rules */
-	int r_simp; /* Simple rules:   A -> a  */
-	int r_comp; /* Compound rules: A -> BC */
-
-	/* Initial rule */
-	char init = 'R';
+	init = 'R';
 
 	/* TODO */
 	r_simp = 4; r_comp = 3;
 
-	/* Simples rules array */
-	char P_simp[SIZ_SIMP][r_simp+1];
+	P_simp = malloc(sizeof(void *) * (r_simp + 1));
+	for (int i = 0; i < r_simp + 1; i++)
+		P_simp[i] = malloc(sizeof(char) * SIZ_SIMP);
 
-	/* Compound rules array */
-	char P_comp[SIZ_COMP][r_comp+1];
+	P_comp = malloc(sizeof(void *) * (r_comp + 1));
+	for (int i = 0; i < r_comp + 1; i++)
+		P_comp[i] = malloc(sizeof(char) * SIZ_COMP);
 
 	/* TODO */
 	P_simp[1][0] = 'A'; P_simp[1][1] = '0';
@@ -111,7 +116,7 @@ int main() {
 		free(line);
 	}
 
-	return 0;
+	//return 0;
 
 	/* Input string */
 	const char input[] = "00111";
@@ -119,8 +124,14 @@ int main() {
 	/* Number of terminals in string */
 	int n = strlen(input);
 
-	/* Productions matrix */
-	bool P[n+1][n+1][SIZ_ALPH];
+	/* Allocation */
+	P = malloc(sizeof(void *) * (n + 1));
+	for (int i = 0; i < n + 1; i++) {
+		P[i] = malloc(sizeof(void *) * (n + 1));
+		for (int j = 0; j < n + 1; j++) {
+			P[i][j] = malloc(sizeof(bool) * SIZ_ALPH);
+		}
+	}
 
 	/* Initialization */
 	for (int i=0; i<=n; i++)
@@ -133,20 +144,13 @@ int main() {
 	/* PARSE STRING */
 
 	/* Handle simple productions */
-	printf("SIMPLE: %s\n", input);
 	for (int i=1; i<=n; i++) {
-		printf("\ti = %d\n", i);
 		for (int j=1; j<=r_simp; j++) {
 			/* R_j -> a_i */
-			printf("\t\ti, j = %d, %d", i, j);
-			printf(" (%c -> %d)", P_simp[j][1], P_simp[j][1]-48);
-			printf(" == %c", input[i-1]);
 			if (P_simp[j][1] == input[i-1]) {
 				int rule = ctoi(P_simp[j][0]);
 				P[i][1][rule] = true;
-				printf(" true for %c", rule+65);
 			}
-			printf("\n");
 		}
 	}
 
@@ -168,7 +172,7 @@ int main() {
 
 	/* FINISH */
 
-	print_matrix(P, n);
+	//print_matrix(P, n);
 
 	if (P[1][n][ctoi(init)])
 		puts("YES");
