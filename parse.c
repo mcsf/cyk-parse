@@ -4,17 +4,6 @@
 #include <string.h>
 
 
-#if 0
-#include <sys/types.h>
-/*
- * This prototype should be in stdio.h, but GCC warns of an implicit
- * declaration without it. This might be a particular problem of the
- * system header files of the developer (Debian Wheezy).
- */
-ssize_t getline(char **lineptr, size_t *n, FILE *stream);
-#endif
-
-
 /* Size of line buffer for the parsing of rules */
 #define SIZ_BUF_RULE 4
 
@@ -120,9 +109,8 @@ void P_free(P_t P, int n) {
 	int i, j;
 
 	for (i = 0; i < n + 1; i++) {
-		for (j = 0; j < n + 1; j++) {
+		for (j = 0; j < n + 1; j++)
 			free(P[i][j]);
-		}
 		free(P[i]);
 	}
 	free(P);
@@ -135,20 +123,6 @@ void P_free(P_t P, int n) {
 int ctoi(char c) {
 	return c - 65;
 }
-
-
-#if DEBUG
-void print_matrix(bool ***P, int n) {
-	int i, j, k;
-
-	for (i = 1; i <= n; i++)
-		for (int j = 1; j <= n; j++)
-			for (int k = 0; k < SIZ_ALPH; k++)
-				printf("%d\t%d\t%c\t%s\n",
-						i, j, k+65, P[i][j][k] ? "YES" : "");
-}
-#endif
-
 
 
 /* PARSER CONSTRUCTION ********************************************** */
@@ -170,27 +144,19 @@ void build() {
 
 		if (first_line) {
 			init = line[0];
-#if DEBUG
-			printf("FIRST IS %c\n", init);
-#endif
 			first_line = false;
 		}
 
 		switch (lin_siz) {
+
 			/* Compound rule */
 			case 4:
-#if DEBUG
-				printf("comp");
-#endif
 				stk_push(lines_comp, line);
 				r_comp++;
 				break;
 
 			/* Simple rule */
 			case 3:
-#if DEBUG
-				printf("simp");
-#endif
 				stk_push(lines_simp, line);
 				r_simp++;
 				break;
@@ -200,9 +166,6 @@ void build() {
 		}
 
 		if (stop) break;
-#if DEBUG
-		printf("\t%s", line);
-#endif
 	}
 
 	free(line);
@@ -266,10 +229,6 @@ void parse(char *input) {
 						P[j][i][A] = true;
 				}
 
-#if DEBUG
-	print_matrix(P, n);
-#endif
-
 	if (P[1][n][ctoi(init)])
 		puts("yes");
 	else
@@ -291,10 +250,6 @@ void parse_lines() {
 
 		strncpy(input, line, size);
 		input[size] = '\0';
-
-#if DEBUG
-		puts(input);
-#endif
 		parse(input);
 	}
 	free(line);
