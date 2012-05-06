@@ -1,3 +1,3 @@
-CFLAGS=-ansi -Wall -pedantic -g -std=c99
+CFLAGS=-ansi -Wall -pedantic -g
 
 all: parse

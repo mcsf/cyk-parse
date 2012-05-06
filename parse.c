@@ -4,16 +4,22 @@
 #include <string.h>
 
 
+#if 0
+#include <sys/types.h>
 /*
  * This prototype should be in stdio.h, but GCC warns of an implicit
  * declaration without it. This might be a particular problem of the
  * system header files of the developer (Debian Wheezy).
  */
-int getline(char **lineptr, int *n, FILE *stream);
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+#endif
 
 
 /* Size of line buffer for the parsing of rules */
-#define SIZ_BUF 4
+#define SIZ_BUF_RULE 4
+
+/* Size of line buffer for the parsing of input lines */
+#define SIZ_BUF_LINE 1024
 
 
 /* TYPES *********************************************************** */
@@ -24,7 +30,7 @@ typedef bool ***P_t;
 
 /* Type and struct definitions for a stack of fixed-size strings */
 typedef struct _node {
-	char value[SIZ_BUF];
+	char value[SIZ_BUF_RULE];
 	struct _node *next;
 } node;
 
@@ -64,7 +70,7 @@ stack *stk_new() {
 
 void stk_push(stack *stk, char *value) {
 	node *new  = malloc(sizeof(node));
-	strncpy(new->value, value, SIZ_BUF);
+	strncpy(new->value, value, SIZ_BUF_RULE);
 	new->next  = stk->head;
 	stk->head  = new;
 }
@@ -75,7 +81,7 @@ void stk_pop(stack *stk, char *value) {
 	value[0] = '\0';
 	if (!n) return;
 
-	strncpy(value, n->value, SIZ_BUF);
+	strncpy(value, n->value, SIZ_BUF_RULE);
 	stk->head = n->next;
 	free(n);
 }
@@ -89,20 +95,21 @@ void stk_pop(stack *stk, char *value) {
  */
 
 P_t P_new(int n) {
+	int i, j, k;
 
 	/* Allocation */
 	bool ***P = malloc(sizeof(void *) * (n + 1));
-	for (int i = 0; i < n + 1; i++) {
+	for (i = 0; i < n + 1; i++) {
 		P[i] = malloc(sizeof(void *) * (n + 1));
-		for (int j = 0; j < n + 1; j++) {
+		for (j = 0; j < n + 1; j++) {
 			P[i][j] = malloc(sizeof(bool) * SIZ_ALPH);
 		}
 	}
 
 	/* Initialization */
-	for (int i=0; i<=n; i++)
-		for (int j=0; j<=n; j++)
-			for (int k=0; k<SIZ_ALPH; k++)
+	for (i=0; i<=n; i++)
+		for (j=0; j<=n; j++)
+			for (k=0; k<SIZ_ALPH; k++)
 				P[i][j][k] = false;
 
 	return P;
@@ -110,8 +117,10 @@ P_t P_new(int n) {
 
 
 void P_free(P_t P, int n) {
-	for (int i = 0; i < n + 1; i++) {
-		for (int j = 0; j < n + 1; j++) {
+	int i, j;
+
+	for (i = 0; i < n + 1; i++) {
+		for (j = 0; j < n + 1; j++) {
 			free(P[i][j]);
 		}
 		free(P[i]);
@@ -128,13 +137,17 @@ int ctoi(char c) {
 }
 
 
+#if DEBUG
 void print_matrix(bool ***P, int n) {
-	for (int i=1; i<=n; i++)
-		for (int j=1; j<=n; j++)
-			for (int k=0; k<SIZ_ALPH; k++)
+	int i, j, k;
+
+	for (i = 1; i <= n; i++)
+		for (int j = 1; j <= n; j++)
+			for (int k = 0; k < SIZ_ALPH; k++)
 				printf("%d\t%d\t%c\t%s\n",
 						i, j, k+65, P[i][j][k] ? "YES" : "");
 }
+#endif
 
 
 
@@ -142,8 +155,9 @@ void print_matrix(bool ***P, int n) {
 
 void build() {
 
+	int    i;
 	int    lin_siz;
-	int    buf_siz    = SIZ_BUF;
+	size_t buf_siz    = SIZ_BUF_RULE;
 	char  *line       = (char *) malloc(buf_siz);
 	bool   first_line = true;
 	stack *lines_simp = stk_new();
@@ -196,23 +210,23 @@ void build() {
 	/* Allocate memory for rules arrays */
 
 	P_simp = malloc(sizeof(void *) * (r_simp + 1));
-	for (int i = 0; i < r_simp + 1; i++)
+	for (i = 0; i < r_simp + 1; i++)
 		P_simp[i] = malloc(sizeof(char) * SIZ_SIMP);
 
 	P_comp = malloc(sizeof(void *) * (r_comp + 1));
-	for (int i = 0; i < r_comp + 1; i++)
+	for (i = 0; i < r_comp + 1; i++)
 		P_comp[i] = malloc(sizeof(char) * SIZ_COMP);
 
 	/* Populate rules arrays from stacks */
 
-	for (int i = 1; i <= r_simp; i++) {
-		char line[SIZ_BUF];
+	for (i = 1; i <= r_simp; i++) {
+		char line[SIZ_BUF_RULE];
 		stk_pop(lines_simp, line);
 		strncpy(P_simp[i], line, SIZ_SIMP);
 	}
 
-	for (int i = 1; i <= r_comp; i++) {
-		char line[SIZ_BUF];
+	for (i = 1; i <= r_comp; i++) {
+		char line[SIZ_BUF_RULE];
 		stk_pop(lines_comp, line);
 		strncpy(P_comp[i], line, SIZ_COMP);
 	}
@@ -222,6 +236,7 @@ void build() {
 /* PARSING ********************************************************** */
 
 void parse(char *input) {
+	int i, j, k, l;
 
 	/* Number of terminals in string */
 	int n = strlen(input);
@@ -230,8 +245,8 @@ void parse(char *input) {
 	bool ***P = P_new(n);
 
 	/* Handle simple productions */
-	for (int i=1; i<=n; i++)
-		for (int j=1; j<=r_simp; j++)
+	for (i = 1; i <= n; i++)
+		for (j = 1; j <= r_simp; j++)
 			/* R_j -> a_i */
 			if (P_simp[j][1] == input[i-1]) {
 				int rule = ctoi(P_simp[j][0]);
@@ -239,10 +254,10 @@ void parse(char *input) {
 			}
 
 	/* Handle compound productions */
-	for (int i=2; i<=n; i++)
-		for (int j=1; j<=n-i+1; j++)
-			for (int k=1; k<=i-1; k++)
-				for (int l=1; l<=r_comp; l++) {
+	for (i = 2; i <= n; i++)
+		for (j = 1; j <= n - i + 1; j++)
+			for (k = 1; k <= i - 1; k++)
+				for (l = 1; l <= r_comp; l++) {
 					/* R_A -> R_B R_C */
 					int A = ctoi(P_comp[l][0]);
 					int B = ctoi(P_comp[l][1]);
@@ -251,7 +266,9 @@ void parse(char *input) {
 						P[j][i][A] = true;
 				}
 
-	//print_matrix(P, n);
+#if DEBUG
+	print_matrix(P, n);
+#endif
 
 	if (P[1][n][ctoi(init)])
 		puts("yes");
@@ -263,14 +280,15 @@ void parse(char *input) {
 
 
 void parse_lines() {
-	int   buf_siz = SIZ_BUF;
-	char *line    = (char *) malloc(buf_siz);
+	size_t  buf_siz = SIZ_BUF_LINE;
+	char   *line    = (char *) malloc(buf_siz);
+	char    input[SIZ_BUF_LINE];
 
 	while (getline(&line, &buf_siz, stdin) != EOF) {
+		int size = strlen(line) - 1;
+
 		if (strcmp(line, "#\n") == 0) break;
 
-		int  size = strlen(line) - 1;
-		char input[size];
 		strncpy(input, line, size);
 		input[size] = '\0';
 
@@ -278,7 +296,6 @@ void parse_lines() {
 		puts(input);
 #endif
 		parse(input);
-
 	}
 	free(line);
 }
